@@ -1,0 +1,76 @@
+---
+- name: Install MongoDB on Ubuntu 20.04 VM
+  hosts: mongo
+  become: true
+  tasks:
+
+    - name: Update package lists
+      apt:
+        update_cache: yes
+
+    - name: Install pip3
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: Install pymongo using pip3
+      pip:
+        name: pymongo
+
+    - name: Import the MongoDB public key
+      apt_key:
+        url: https://www.mongodb.org/static/pgp/server-4.4.asc
+        state: present
+
+    - name: Add MongoDB Repository
+      apt_repository:
+        repo: deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse
+        state: present
+
+    - name: Install MongoDB packages
+      apt:
+        name: mongodb-org
+        state: present
+
+    - name: Set network port in mongod.conf
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^  port:'
+        line: '  port: 27017'
+        insertafter: '^net:'
+        state: present
+
+    - name: Set network bindIp in mongod.conf
+      lineinfile:
+        path: /etc/mongod.conf
+        regexp: '^  bindIp:'
+        line: '  bindIp: 0.0.0.0'
+        insertafter: '^  port:'
+        state: present
+
+    - name: Enable and start MongoDB service
+      systemd:
+        name: mongod
+        state: started
+        enabled: yes
+
+    - name: Pause for a few seconds to ensure MongoDB has started
+      command:
+        cmd: sleep 10
+
+    - name: Create initial MongoDB root user
+      shell: |
+        mongo admin --eval 'db.createUser({user: "root", pwd: "root_password", roles: [{role: "root", db: "admin"}]})'
+      ignore_errors: yes
+
+
+    - name: Create MongoDB user
+      mongodb_user:
+        login_host: localhost
+        login_user: root
+        login_password: root_password
+        database: admin
+        name: my_user
+        password: my_password
+        roles: readWrite
+        state: present

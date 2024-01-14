@@ -1,0 +1,41 @@
+---
+- name: Extract mysql Performance Parameters
+  hosts: mysql
+  become: true
+  tasks:
+    - name: Set base playbook directory
+      set_fact:
+        base_playbook_dir: "{{ playbook_dir | regex_replace('/ansible/mysql/playbook$', '') }}"
+
+    - name: Display base playbook directory
+      debug:
+        msg: "The base playbook directory is: {{ base_playbook_dir }}"
+
+    - name: Ensure Python is installed
+      apt:
+        name: python3
+        state: present
+
+    - name: Install pip for Python
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: Install PyYAML via pip
+      pip:
+        name: PyYAML
+
+    - name: Upload Python script to target machine
+      copy:
+        src: ./scripts/extract_mysql_params.py
+        dest: '{{ user_home_path }}/extract_mysql_params.py'
+        mode: 0755
+
+    - name: Run the Python script
+      command:
+        cmd: python3 extract_mysql_params.py
+        chdir: '{{ user_home_path }}'
+
+    - name: Fetch the file from the mysql to master
+      run_once: yes
+      fetch: src='{{ user_home_path }}/params.json' dest='{{ base_playbook_dir }}/params.json' flat=yes

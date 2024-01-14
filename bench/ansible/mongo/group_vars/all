@@ -1,0 +1,13 @@
+---
+
+
+user_home_path: '/home/user'
+usr_name: 'user'
+benchmark_project: "/home/{{usr_name}}/Benchmark2"
+ycsb_download_url: 'https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-mongodb-binding-0.17.0.tar.gz'
+mongo_binding: 'ycsb-mongodb-binding-0.17.0'
+ycsb_mongo_dir: ycsb-mongodb
+wg_ycsb_dir: "{{ benchmark_project }}/ycsb/{{ ycsb_mongo_dir }}"
+workload: 'workloada'
+operationcount: 200000
+threads: 32

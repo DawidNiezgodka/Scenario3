@@ -1,0 +1,5 @@
+collections:
+  # get mongodb collection
+  - name: community.mongodb
+    version: 1.6.1
+    source: https://galaxy.ansible.com

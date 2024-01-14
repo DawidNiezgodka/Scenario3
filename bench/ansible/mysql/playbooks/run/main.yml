@@ -1,0 +1,23 @@
+---
+- hosts: workload-generator
+  become: yes
+  tasks:
+    - name: Determine Mysql IP
+      set_fact:
+        mysql_ip: "{{ hostvars['mysql1']['ansible_host'] }}"
+
+    - name: Update YCSB JDBC Binding Configuration File
+      copy:
+        dest: '{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/conf/db.properties'
+        content: |
+          db.driver=com.mysql.jdbc.Driver
+          db.url=jdbc:mysql://{{ mysql_ip }}:3306/BenchTest
+          db.user=example_user
+          db.passwd=pswd123
+
+    - name: Running YCSB Workload
+      shell:
+        cmd: |
+          cd {{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}
+          ./bin/ycsb.sh load jdbc -P workloads/{{ workload }} -P conf/db.properties -p operationcount=5000 -threads {{ threads }}
+          ./bin/ycsb.sh run jdbc -P workloads/{{ workload }} -P conf/db.properties -p operationcount={{ operationcount }} -threads {{ threads }} > ycsb.txt

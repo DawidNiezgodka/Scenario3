@@ -1,0 +1,12 @@
+on:
+  workflow_call:
+jobs:
+  CI-test:
+    name: CI-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run CI tests
+        run: |
+          echo "Running continuous integration tests"

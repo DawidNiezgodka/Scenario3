@@ -1,0 +1,17 @@
+---
+- hosts: workload-generator
+  become: yes
+  tasks:
+    - name: Determine MongoDB IP
+      set_fact:
+        mongo_ip: "{{ hostvars['mongo1']['ansible_host'] }}"
+
+    - name: Running YCSB Workload
+      shell:
+        cmd: |
+          cd {{benchmark_project}}/ycsb/{{ycsb_mongo_dir}}
+          ./bin/ycsb.sh load mongodb -s -P workloads/{{ workload }} -p operationcount=5000 -threads {{ threads }} -p mongodb.url=mongodb://{{ mongo_ip }}:27017/myDatabase
+          ./bin/ycsb.sh run mongodb -s -P workloads/{{ workload }} -p operationcount={{ operationcount }} -threads {{ threads }} -p mongodb.url=mongodb://{{ mongo_ip }}:27017/myDatabase > ycsb.txt
+
+
+

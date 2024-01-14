@@ -1,0 +1,100 @@
+name: CI-CB-CD pipeline
+on:
+#  schedule:
+#    - cron:  '0 * * * *'
+#  push:
+#    branches:
+#      - main
+
+  workflow_dispatch:
+
+jobs:
+  CI:
+    name: determine which db to benchmark
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    outputs:
+      run_mongo: ${{ steps.decide.outputs.mongo }}
+      run_mysql: ${{ steps.decide.outputs.mysql }}
+    steps:
+      - name: Decide which job to run based on count
+        id: decide
+        run: |
+          random_num=$((RANDOM % 100 + 1))
+          echo "Selected random number: $random_num"
+          if [ $((random_num % 2)) -eq 0 ]; then
+            echo "mongo=true" >> "$GITHUB_OUTPUT"
+            echo "mysql=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "mongo=false" >> "$GITHUB_OUTPUT"
+            echo "mysql=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  CB_MONGO:
+    name: continuous benchmarking for mongo
+    needs: [CI]
+    if: ${{ needs.CI.outputs.run_mongo == 'true' }}
+    permissions:
+      contents: write
+      id-token: write
+    uses: DawidNiezgodka/CB-Framework/.github/workflows/continuous_benchmarking.yml@main
+    with:
+      bench_dir: bench/
+      number_of_metrics_to_evaluate: 5
+      infra_instance_meta_public_key: terraform/publickeys/public_key.pub
+      infra_vars_file_path: terraform/input_mongo.tfvars
+      infra_destroy_after_run: true
+      snr_directory: ansible/mongo
+      snr_def_cfg_dir: ansible/mongo
+      snr_execution_order: setup_wg,setup_mongo,run,send_mongo_cfg,get_ycsb_res,merge_cfg_and_ycsb_res,save_res
+      snr_requirements: requirements.yml
+      eval_bench_group_name: "MongoDB Benchmark"
+      eval_branch_with_bench_data: "db_bench_data"
+      eval_bucket_results_folder_path: "mongo"
+      eval_evaluation_method: "threshold"
+      eval_threshold_values: 60000,2000,200000,5000,200000
+      eval_comparison_operators: tolerance,tolerance,smaller,smaller,smaller
+      eval_comparison_margins: 10,10,-1,-1,-1
+      eval_result_files_merge_strategy_for_each_metric: "sum, average, average, average, average"
+    secrets: inherit
+
+  CB_MYSQL:
+    name: continuous benchmarking for mysql
+    needs: [CI]
+    if: ${{ needs.CI.outputs.run_mysql == 'true' }}
+    permissions:
+      contents: write
+      id-token: write
+    uses: DawidNiezgodka/CB-Framework/.github/workflows/continuous_benchmarking.yml@main
+    with:
+      bench_dir: bench/
+      number_of_metrics_to_evaluate: 5
+      infra_instance_meta_public_key: terraform/publickeys/public_key.pub
+      infra_vars_file_path: terraform/input_mysql.tfvars
+      infra_destroy_after_run: true
+      snr_directory: ansible/mysql
+      snr_def_cfg_dir: ansible/mysql
+      snr_execution_order: setup_wg, setup_mysql,run,send_mysql_cfg,get_ycsb_res,merge_cfg_and_ycsb_res,save_res
+      snr_requirements: requirements.yml
+      eval_bench_group_name: "MySQL Benchmark"
+      eval_branch_with_bench_data: "db_bench_data"
+      eval_bucket_results_folder_path: "mysql"
+      eval_evaluation_method: "threshold"
+      eval_threshold_values: 60000,2000,200000,5000,200000
+      eval_comparison_operators: tolerance,tolerance,smaller,smaller,smaller
+      eval_comparison_margins: 10,10,-1,-1,-1
+      eval_result_files_merge_strategy_for_each_metric: "sum, average, average, average, average"
+    secrets: inherit
+
+  CD:
+    name: continuous deployment
+    needs: [CB_MYSQL, CB_MONGO]
+    if:  |
+      always()
+      && contains(needs.*.result, 'success')
+      && !contains(needs.*.result, 'failure')
+    uses: ./.github/workflows/cd.yml
+
+

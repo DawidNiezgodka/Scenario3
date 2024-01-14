@@ -1,0 +1,25 @@
+---
+- name: Check for txt and upload to GCP Bucket
+  hosts: workload-generator
+  vars:
+    directory_to_search: "{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}"
+    gcp_bucket_path: "gs://result_{{ inventory_hostname }}.json"
+
+  tasks:
+
+    - name: Search for .json files in given directory
+      find:
+        paths: "{{ directory_to_search }}"
+        patterns: "result*.json"
+        recurse: no
+      register: res
+
+    - name: Fail if no res.json file exists
+      fail:
+        msg: "No result files found in the given directory"
+      when: res.matched == 0
+
+    - name: Upload .ycsb_txt file to GCP bucket using gsutil
+      command: gsutil cp "{{ item.path }}" "{{ gcp_bucket_path }}"
+      with_items: "{{ res.files }}"
+      when: res.matched > 0

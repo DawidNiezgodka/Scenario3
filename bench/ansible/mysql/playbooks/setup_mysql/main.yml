@@ -1,0 +1,32 @@
+- hosts: mysql
+  become: yes
+  vars_files:
+    - vars/mysql_vars.yml
+  roles:
+    - { role: geerlingguy.mysql }
+
+- name: Create MySQL Database and Table
+  hosts: mysql
+  become: yes
+  tasks:
+    - name: Ensure database is present
+      community.mysql.mysql_db:
+        name: BenchTest
+        state: present
+        login_user: example_user
+        login_password: pswd123
+
+    - name: Create usertable
+      community.mysql.mysql_query:
+        login_db: BenchTest
+        login_user: example_user
+        login_password: pswd123
+        query: |
+          CREATE TABLE IF NOT EXISTS usertable (
+            YCSB_KEY VARCHAR(255) PRIMARY KEY,
+            FIELD0 TEXT, FIELD1 TEXT,
+            FIELD2 TEXT, FIELD3 TEXT,
+            FIELD4 TEXT, FIELD5 TEXT,
+            FIELD6 TEXT, FIELD7 TEXT,
+            FIELD8 TEXT, FIELD9 TEXT
+          );

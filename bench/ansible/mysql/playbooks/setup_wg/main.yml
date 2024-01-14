@@ -1,0 +1,79 @@
+
+- name: Install openjdk-8-jdk on all nodes
+  hosts: workload-generator
+  become: true
+  tasks:
+    - name: Update APT cache
+      apt:
+        update_cache: yes
+
+    - name: Install openjdk-8-jdk
+      apt:
+        name: openjdk-8-jdk
+        state: present
+        update_cache: yes
+
+    - name: Install git
+      apt:
+        name: git
+        state: present
+        update_cache: yes
+
+    - name: Install unzip and zip
+      apt:
+        name:
+          - unzip
+          - zip
+        state: present
+        update_cache: yes
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install wget
+      apt:
+        name:
+          - wget
+          - dpkg
+          - binutils
+        state: present
+
+    - name: Create dir for YCSB
+      file:
+        path: '{{benchmark_project}}/ycsb'
+        state: directory
+        owner: '{{ usr_name }}'
+        group: '{{ usr_name }}'
+        mode: '0755'
+
+    - name: Download YCSB
+      get_url:
+        url: '{{ ycsb_download_url }}'
+        dest: '{{benchmark_project}}/ycsb'
+
+    - name: Extract YCSB to target_name
+      shell: |
+        tar -xzf {{benchmark_project}}/ycsb/{{mysql_binding}}.tar.gz -C {{benchmark_project}}/ycsb
+        mv {{benchmark_project}}/ycsb/{{mysql_binding}} {{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}
+
+    - name: Download MySQL Connector DEB package
+      command:
+        cmd: curl -O --location https://downloads.mysql.com/archives/get/p/3/file/mysql-connector-j_8.0.33-1ubuntu20.04_all.deb
+
+        chdir: "{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/lib"
+
+    - name: Extract DEB file
+      command:
+        cmd: ar x mysql-connector-j_8.0.33-1ubuntu20.04_all.deb
+        chdir: "{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/lib"
+
+    - name: Extract data.tar.xz file
+      command:
+        cmd: tar -xJf data.tar.xz
+        chdir: "{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/lib"
+
+    - name: Move connector to jar pool
+      command:
+        cmd: mv usr/share/java/mysql-connector-j-8.0.33.jar {{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/lib
+        chdir: "{{benchmark_project}}/ycsb/{{ycsb_mysql_dir}}/lib"
